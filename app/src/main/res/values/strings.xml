@@ -1,3 +1,5 @@
 <resources>
-    <string name="app_name">Random Jokes</string>
+    <string name="app_name">Nerdy Jokes</string>
+    <string name="credit">#nerdyjokes#iambedoy</string>
+    <string name="credit_alt">Made with ❤️🌮 @ St Louis, MO</string>
 </resources>
