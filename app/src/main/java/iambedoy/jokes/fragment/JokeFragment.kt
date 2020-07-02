@@ -1,17 +1,22 @@
 package iambedoy.jokes.fragment
 
+import android.app.AlertDialog
 import android.content.Context.SENSOR_SERVICE
 import android.content.Intent
+import android.content.res.Resources
+import android.graphics.Color
 import android.hardware.Sensor
 import android.hardware.Sensor.TYPE_ACCELEROMETER
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.os.Bundle
+import android.text.SpannableString
+import android.text.method.LinkMovementMethod
+import android.text.util.Linkify
 import android.util.Log
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
+import android.view.*
+import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Observer
@@ -31,6 +36,11 @@ import kotlin.math.sqrt
  */
 class JokeFragment : Fragment(), SensorEventListener{
 
+    val Int.dp: Int
+        get() = (this / Resources.getSystem().displayMetrics.density).toInt()
+    private val Int.px: Int
+        get() = (this * Resources.getSystem().displayMetrics.density).toInt()
+
     private val threshold = 5.0 // m/S**2
     private val timeOffset = 3500
 
@@ -48,6 +58,32 @@ class JokeFragment : Fragment(), SensorEventListener{
         R.color.color_primary_09
     )
 
+    private val aboutMessage : TextView
+        get() {
+            val textView = TextView(context)
+            val dp = 24.px
+            val spannableString = SpannableString(
+                "Shake your phone and have fun. \n\n"+
+                        "Develop:\n" +
+                        "Carlos Bedoy | Android Engineer \n\n" +
+                        "https://www.linkedin.com/in/carlos-bedoy-34248187\n" +
+                        "http://cbedoy.github.io\n" +
+                        "\n" +
+                        "Backend: \n" +
+                        "Official_joke_api\n\nhttps://github.com/15Dkatz/official_joke_api\n\n" +
+                        getString(R.string.credit) +"\n" +
+                        getString(R.string.credit_alt) +"\n"
+
+            )
+            Linkify.addLinks(spannableString, Linkify.WEB_URLS)
+            textView.text = spannableString
+            textView.setTextColor(Color.parseColor("#282a36"))
+            textView.movementMethod = LinkMovementMethod.getInstance()
+            textView.setPadding(dp,dp,dp,dp)
+
+            return textView
+        }
+
     private val viewModel : JokeViewModel by inject()
 
     private val sensorManager by lazy {
@@ -63,6 +99,7 @@ class JokeFragment : Fragment(), SensorEventListener{
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
+        setHasOptionsMenu(true)
         return inflater.inflate(R.layout.fragment_joke, container, false)
     }
 
@@ -76,11 +113,10 @@ class JokeFragment : Fragment(), SensorEventListener{
                 joke_title.setTextColor(ContextCompat.getColor(it, colors.shuffled().first()))
             }
 
+            val hashTag = getString(if(joke.setup.length % 2 == 0) R.string.credit else R.string.credit_alt)
             joke_title.text = joke.setup
             joke_description.text = joke.punchline
-            joke_hash_tag.setText(
-                if(joke.setup.length % 2 == 0) R.string.credit else R.string.credit_alt
-            )
+            joke_hash_tag.text = hashTag
 
             view.setOnClickListener { shareContent(joke) }
             joke_title.setOnClickListener { shareContent(joke) }
@@ -93,7 +129,7 @@ class JokeFragment : Fragment(), SensorEventListener{
     private fun shareContent(joke: JokeResponse) {
         val sendIntent: Intent = Intent().apply {
             action = Intent.ACTION_SEND
-            putExtra(Intent.EXTRA_TEXT, "${joke.setup} ${joke.punchline}")
+            putExtra(Intent.EXTRA_TEXT, "${joke.setup} ${joke.punchline}\n${getString(R.string.credit)}")
             type = "text/plain"
         }
 
@@ -118,6 +154,23 @@ class JokeFragment : Fragment(), SensorEventListener{
 
     }
 
+    override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
+        inflater.inflate(R.menu.joke_menu, menu)
+        super.onCreateOptionsMenu(menu, inflater)
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        when(item.itemId){
+            R.id.action_info -> {
+                AlertDialog.Builder(activity)
+                    .setTitle("About")
+                    .setView(aboutMessage)
+                    .show()
+            }
+        }
+        return super.onOptionsItemSelected(item)
+    }
+
     override fun onSensorChanged(sensorEvent: SensorEvent?) {
         sensorEvent?.let {
             if (sensor?.type == TYPE_ACCELEROMETER) {
@@ -138,7 +191,6 @@ class JokeFragment : Fragment(), SensorEventListener{
                         lastShakeTime = curTime
 
                         viewModel.takeRandomJoke()
-
                     }
                 }
             }
